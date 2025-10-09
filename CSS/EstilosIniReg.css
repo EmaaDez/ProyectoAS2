@@ -1,0 +1,70 @@
+body {
+    background-image: url('https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb');
+    background-size: cover;
+    background-position: center;
+    backdrop-filter: blur(6px);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.card {
+    background-color: rgba(255, 245, 235, 0.95); /* Beige semi-transparente */
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    border-radius: 12px;
+    padding: 2rem;
+    max-width: 24rem;
+    width: 100%;
+}
+
+.input-field {
+    transition: border-color 0.3s ease;
+}
+
+.input-field:focus {
+    border-color: #D4A017; /* Dorado */
+    box-shadow: 0 0 8px rgba(212, 160, 23, 0.3);
+}
+
+.btn-coffee {
+    background-color: #6B4E31; /* Marrón tostado */
+    transition: all 0.3s ease;
+}
+
+.btn-coffee:hover {
+    background-color: #4A2C2A; /* Marrón más oscuro */
+    transform: scale(1.05);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.user-icon::before {
+    content: '👤';
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6B4E31;
+}
+
+.coffee-icon::before {
+    content: '☕';
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6B4E31;
+}
+
+.lock-icon::before {
+    content: '🔒';
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6B4E31;
+}
+
+.hidden {
+    display: none;
+}
