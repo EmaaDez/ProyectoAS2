@@ -6,3 +6,11 @@ function showLogin() {
     document.getElementById('register-form').classList.add('hidden');
     document.getElementById('login-form').classList.remove('hidden');
 }
+function iniciarSesion() {
+    event.preventDefault();
+    window.location.href = "InterfazDashboard.html";
+}
+function cerrarSesion() {
+    event.preventDefault();
+    window.location.href = "InterfazInicioRegistro.html";
+}
