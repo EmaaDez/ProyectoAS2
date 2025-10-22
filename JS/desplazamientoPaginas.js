@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Para el formulario de registro
-    document.getElementById('register-form').addEventListener('submit', function(event) {
+    document.querySelector('#register-form form').addEventListener('submit', function(event)  {
         console.log('Evento submit capturado (registro)');
         event.preventDefault();
         const form = this;
@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Para el formulario de login
-    document.getElementById('login-form').addEventListener('submit', function(event) {
+    document.querySelector('#login-form form').addEventListener('submit', function(event) {
         console.log('Evento submit capturado (login)');
         event.preventDefault();
         const form = this;
