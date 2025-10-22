@@ -70,23 +70,23 @@ body {
 }
 
 .mensaje-registro {
-    margin-bottom: 15px;
-    padding: 10px;  
-    border-radius: 5px; 
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: 8px;
     text-align: center;
-    display: none;
-}
-
-.mensaje-registro.error {
-    background-color: #ffebee;
-    color: #c62828;
-    border: 1px solid #ef9a9a;
+    font-family: 'Lato', sans-serif;
+    font-weight: 600;
     display: block;
 }
 
 .mensaje-registro.success {
-    background-color: #e8f5e9;
-    color: #2e7d32;
-    border: 1px solid #a5d6a7;
-    display: block;
+    background-color: #d1fae5;
+    color: #065f46;
+    border: 1px solid #10b981;
+}
+
+.mensaje-registro.error {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #ef4444;
 }
