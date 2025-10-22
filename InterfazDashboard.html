@@ -25,7 +25,18 @@
         <section id="materia" class="section active">
             <h2>Gestión de Materia Prima</h2>
             <p>Registrar y actualizar información sobre granos verdes, controlar inventarios y generar órdenes de compra.</p>
+            
+            <div id="tablaInventario" class="mt-4" ></div>
+
+            <!-- Botón para recargar datos -->
+    <button onclick="cargarInventario()" class="bg-green-600 text-white px-4 py-2 rounded mt-3 hover:bg-green-700">
+        Actualizar Inventario
+    </button>
         </section>
+
+
+
+
 
         <section id="produccion" class="section">
             <h2>Gestión de Producción</h2>
@@ -56,5 +67,46 @@
             window.location.href = "InterfazInicioRegistro.html"; // Regresa al login
         }
     </script>
+
+<script>
+async function cargarInventario() {
+    try {
+        const respuesta = await fetch('backend/api_inventario.php');
+        const inventario = await respuesta.json();
+
+        let html = `
+            <table class="table-auto border-collapse border border-gray-400 mt-4">
+                <thead>
+                    <tr class="bg-gray-100">
+                        <th class="border px-4 py-2">Tipo de Grano</th>
+                        <th class="border px-4 py-2">Cantidad (kg)</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        for (const tipo in inventario) {
+            html += `
+                <tr>
+                    <td class="border px-4 py-2 text-center">${tipo}</td>
+                    <td class="border px-4 py-2 text-center">${inventario[tipo]}</td>
+                </tr>
+            `;
+        }
+
+        html += `</tbody></table>`;
+        document.getElementById('tablaInventario').innerHTML = html;
+
+    } catch (error) {
+        document.getElementById('tablaInventario').innerHTML =
+            `<p class="text-red-500">Error al cargar el inventario.</p>`;
+        console.error(error);
+    }
+}
+
+// Llamar automáticamente al cargar la página
+document.addEventListener('DOMContentLoaded', cargarInventario);
+</script>
+
 </body>
 </html>
