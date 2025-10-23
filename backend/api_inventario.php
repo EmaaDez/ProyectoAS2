@@ -17,12 +17,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $tipo = $data['tipo'] ?? null;
     $cantidad = $data['cantidad'] ?? null;
 
-    if ($tipo && $cantidad !== null) {
-        $inventario->actualizarStock($tipo, $cantidad);
-        echo json_encode(["mensaje" => "Stock actualizado", "inventario" => $inventario->mostrarInventario()]);
-    } else {
+    try {
+        if ($tipo && $cantidad !== null) {
+            $inventario->actualizarStock($tipo, $cantidad);
+            echo json_encode(["mensaje" => "Stock actualizado", "inventario" => $inventario->mostrarInventario()]);
+        } else {
+            http_response_code(400);
+            echo json_encode(["error" => "Datos inválidos"]);
+        }
+    } catch (Exception $e) {
         http_response_code(400);
-        echo json_encode(["error" => "Datos inválidos"]);
+        echo json_encode(["error" => $e->getMessage()]);
     }
 }
 ?>

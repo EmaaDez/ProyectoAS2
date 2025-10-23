@@ -26,17 +26,13 @@
             <h2>Gestión de Materia Prima</h2>
             <p>Registrar y actualizar información sobre granos verdes, controlar inventarios y generar órdenes de compra.</p>
             
-            <div id="tablaInventario" class="mt-4" ></div>
+            <div id="tablaInventario" class="mt-4"></div>
 
             <!-- Botón para recargar datos -->
-    <button onclick="cargarInventario()" class="bg-green-600 text-white px-4 py-2 rounded mt-3 hover:bg-green-700">
-        Actualizar Inventario
-    </button>
+            <button onclick="cargarInventario()" class="bg-green-600 text-white px-4 py-2 rounded mt-3 hover:bg-green-700">
+                Actualizar Inventario
+            </button>
         </section>
-
-
-
-
 
         <section id="produccion" class="section">
             <h2>Gestión de Producción</h2>
@@ -66,47 +62,110 @@
         function cerrarSesion() {
             window.location.href = "InterfazInicioRegistro.html"; // Regresa al login
         }
-    </script>
 
-<script>
-async function cargarInventario() {
-    try {
-        const respuesta = await fetch('backend/api_inventario.php');
-        const inventario = await respuesta.json();
+        async function cargarInventario() {
+            try {
+                const respuesta = await fetch('backend/api_inventario.php');
+                const inventario = await respuesta.json();
 
-        let html = `
-            <table class="table-auto border-collapse border border-gray-400 mt-4">
-                <thead>
-                    <tr class="bg-gray-100">
-                        <th class="border px-4 py-2">Tipo de Grano</th>
-                        <th class="border px-4 py-2">Cantidad (kg)</th>
-                    </tr>
-                </thead>
-                <tbody>
-        `;
+                let html = `
+                    <table class="table-auto border-collapse border border-gray-400 mt-4">
+                        <thead>
+                            <tr class="bg-gray-100">
+                                <th class="border px-4 py-2">Tipo de Grano</th>
+                                <th class="border px-4 py-2">Cantidad (kg)</th>
+                                <th class="border px-4 py-2">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
 
-        for (const tipo in inventario) {
-            html += `
-                <tr>
-                    <td class="border px-4 py-2 text-center">${tipo}</td>
-                    <td class="border px-4 py-2 text-center">${inventario[tipo]}</td>
-                </tr>
-            `;
+                for (const tipo in inventario) {
+                    html += `
+                        <tr>
+                            <td class="border px-4 py-2 text-center">${tipo}</td>
+                            <td class="border px-4 py-2 text-center">${inventario[tipo]}</td>
+                            <td class="border px-4 py-2 text-center">
+                                <button onclick="mostrarFormularioAnadir('${tipo}')" class="bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700">Añadir Cantidad</button>
+                            </td>
+                        </tr>
+                    `;
+                }
+
+                html += `</tbody></table>`;
+                document.getElementById('tablaInventario').innerHTML = html;
+
+            } catch (error) {
+                document.getElementById('tablaInventario').innerHTML =
+                    `<p class="text-red-500">Error al cargar el inventario.</p>`;
+                console.error(error);
+            }
         }
 
-        html += `</tbody></table>`;
-        document.getElementById('tablaInventario').innerHTML = html;
+        function mostrarFormularioAnadir(tipo) {
+            const formulario = `
+                <div class="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center">
+                    <div class="bg-white p-6 rounded shadow-lg">
+                        <h3 class="text-lg font-semibold mb-4">Añadir Cantidad para ${tipo}</h3>
+                        <form id="formAnadirGrano" class="space-y-4">
+                            <input type="hidden" id="tipoGrano" value="${tipo}">
+                            <div>
+                                <label for="cantidadKg" class="block text-sm font-medium">Cantidad (kg)</label>
+                                <input type="number" id="cantidadKg" name="cantidadKg" min="0" step="0.01" class="border rounded p-2 w-full" required>
+                            </div>
+                            <div class="flex justify-end space-x-2">
+                                <button type="button" onclick="cerrarFormularioAnadir()" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">Cancelar</button>
+                                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Añadir</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+            document.getElementById('tablaInventario').insertAdjacentHTML('beforeend', formulario);
+        }
 
-    } catch (error) {
-        document.getElementById('tablaInventario').innerHTML =
-            `<p class="text-red-500">Error al cargar el inventario.</p>`;
-        console.error(error);
-    }
-}
+        function cerrarFormularioAnadir() {
+            const formulario = document.querySelector('.fixed.inset-0');
+            if (formulario) formulario.remove();
+        }
 
-// Llamar automáticamente al cargar la página
-document.addEventListener('DOMContentLoaded', cargarInventario);
-</script>
+        async function anadirCantidadGrano(event) {
+            event.preventDefault();
+            const tipo = document.getElementById('tipoGrano').value;
+            const cantidad = parseFloat(document.getElementById('cantidadKg').value);
 
+            if (!tipo || isNaN(cantidad) || cantidad < 0) {
+                alert('Por favor, ingrese una cantidad válida en kilogramos.');
+                return;
+            }
+
+            try {
+                const respuesta = await fetch('backend/api_inventario.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tipo, cantidad })
+                });
+
+                const resultado = await respuesta.json();
+                if (respuesta.ok) {
+                    alert('Cantidad añadida correctamente.');
+                    cerrarFormularioAnadir();
+                    cargarInventario();
+                } else {
+                    alert('Error: ' + resultado.error);
+                }
+            } catch (error) {
+                alert('Error al añadir la cantidad.');
+                console.error(error);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            cargarInventario();
+            document.getElementById('tablaInventario').addEventListener('submit', (e) => {
+                if (e.target.id === 'formAnadirGrano') anadirCantidadGrano(e);
+            });
+        });
+    </script>
 </body>
 </html>
