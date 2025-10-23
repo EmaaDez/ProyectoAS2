@@ -26,9 +26,9 @@
             <h2>Gestión de Materia Prima</h2>
             <p>Registrar y actualizar información sobre granos verdes, controlar inventarios y generar órdenes de compra.</p>
             
+            <div id="tablaStockBajo" class="mt-4"></div>
             <div id="tablaInventario" class="mt-4"></div>
 
-            <!-- Botón para recargar datos -->
             <button onclick="cargarInventario()" class="bg-green-600 text-white px-4 py-2 rounded mt-3 hover:bg-green-700">
                 Actualizar Inventario
             </button>
@@ -47,6 +47,16 @@
         <section id="pedidos" class="section">
             <h2>Gestión de Pedidos y Distribución</h2>
             <p>Recibir pedidos, planificar rutas de entrega y monitorear las entregas en curso.</p>
+
+            <button onclick="mostrarFormularioPedido()" class="bg-blue-600 text-white px-4 py-2 rounded mt-3 hover:bg-blue-700">
+                Generar Pedido
+            </button>
+
+            <div id="tablaPedidos" class="mt-4"></div>
+
+            <button onclick="cargarPedidos()" class="bg-green-600 text-white px-4 py-2 rounded mt-3 hover:bg-green-700">
+                Actualizar Pedidos
+            </button>
         </section>
     </main>
 
@@ -54,21 +64,21 @@
         function mostrarSeccion(id) {
             document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
             document.getElementById(id).classList.add('active');
-
             document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
         }
 
         function cerrarSesion() {
-            window.location.href = "InterfazInicioRegistro.html"; // Regresa al login
+            window.location.href = "InterfazInicioRegistro.html";
         }
 
         async function cargarInventario() {
             try {
-                const respuesta = await fetch('backend/api_inventario.php');
+                const respuesta = await fetch('backend/api_inventario.php?action=inventario');
                 const inventario = await respuesta.json();
 
-                let html = `
+                // Tabla de inventario completo
+                let htmlInventario = `
                     <table class="table-auto border-collapse border border-gray-400 mt-4">
                         <thead>
                             <tr class="bg-gray-100">
@@ -80,24 +90,57 @@
                         <tbody>
                 `;
 
+                // Tabla de stock bajo
+                let htmlStockBajo = `
+                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                        <strong>Alerta:</strong> Los siguientes granos tienen stock bajo (< 20 kg). Se recomienda realizar un pedido.
+                    </div>
+                    <table class="table-auto border-collapse border border-red-400 mt-4">
+                        <thead>
+                            <tr class="bg-red-200">
+                                <th class="border px-4 py-2">Tipo de Grano</th>
+                                <th class="border px-4 py-2">Cantidad (kg)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                let hayStockBajo = false;
                 for (const tipo in inventario) {
-                    html += `
+                    const cantidad = inventario[tipo];
+                    // Tabla de inventario completo
+                    htmlInventario += `
                         <tr>
                             <td class="border px-4 py-2 text-center">${tipo}</td>
-                            <td class="border px-4 py-2 text-center">${inventario[tipo]}</td>
+                            <td class="border px-4 py-2 text-center">${cantidad}</td>
                             <td class="border px-4 py-2 text-center">
                                 <button onclick="mostrarFormularioAnadir('${tipo}')" class="bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700">Añadir Cantidad</button>
                             </td>
                         </tr>
                     `;
+                    // Tabla de stock bajo
+                    if (cantidad < 20) {
+                        hayStockBajo = true;
+                        htmlStockBajo += `
+                            <tr>
+                                <td class="border px-4 py-2 text-center">${tipo}</td>
+                                <td class="border px-4 py-2 text-center">${cantidad}</td>
+                            </tr>
+                        `;
+                    }
                 }
 
-                html += `</tbody></table>`;
-                document.getElementById('tablaInventario').innerHTML = html;
+                htmlInventario += `</tbody></table>`;
+                htmlStockBajo += `</tbody></table>`;
+
+                // Mostrar tabla de stock bajo solo si hay granos con < 20 kg
+                document.getElementById('tablaStockBajo').innerHTML = hayStockBajo ? htmlStockBajo : '';
+                document.getElementById('tablaInventario').innerHTML = htmlInventario;
 
             } catch (error) {
                 document.getElementById('tablaInventario').innerHTML =
                     `<p class="text-red-500">Error al cargar el inventario.</p>`;
+                document.getElementById('tablaStockBajo').innerHTML = '';
                 console.error(error);
             }
         }
@@ -143,7 +186,7 @@
                 const respuesta = await fetch('backend/api_inventario.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ tipo, cantidad })
+                    body: JSON.stringify({ action: 'actualizar_stock', tipo, cantidad })
                 });
 
                 const resultado = await respuesta.json();
@@ -160,10 +203,174 @@
             }
         }
 
+        function mostrarFormularioPedido() {
+            const formulario = `
+                <div class="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center">
+                    <div class="bg-white p-6 rounded shadow-lg w-1/2">
+                        <h3 class="text-lg font-semibold mb-4">Generar Nuevo Pedido</h3>
+                        <form id="formPedido" class="space-y-4">
+                            <div id="detallesGranos" class="space-y-2">
+                                <div class="grano-row flex space-x-2">
+                                    <select name="tipoGrano" class="border rounded p-2 flex-1">
+                                        <option value="Arábica">Arábica</option>
+                                        <option value="Robusta">Robusta</option>
+                                        <option value="Blend">Blend</option>
+                                    </select>
+                                    <input type="number" name="cantidad" min="0" step="0.1" placeholder="Cantidad (kg)" class="border rounded p-2 flex-1" required>
+                                    <button type="button" onclick="eliminarGranoRow(this)" class="bg-red-500 text-white px-2 py-1 rounded">X</button>
+                                </div>
+                            </div>
+                            <button type="button" onclick="añadirGranoRow()" class="bg-green-500 text-white px-4 py-2 rounded">Añadir Otro Grano</button>
+                            <div class="flex justify-end space-x-2">
+                                <button type="button" onclick="cerrarFormularioPedido()" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">Cancelar</button>
+                                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Crear Pedido</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', formulario);
+        }
+
+        function cerrarFormularioPedido() {
+            const formulario = document.querySelector('.fixed.inset-0');
+            if (formulario) formulario.remove();
+        }
+
+        function añadirGranoRow() {
+            const div = document.createElement('div');
+            div.classList.add('grano-row', 'flex', 'space-x-2');
+            div.innerHTML = `
+                <select name="tipoGrano" class="border rounded p-2 flex-1">
+                    <option value="Arábica">Arábica</option>
+                    <option value="Robusta">Robusta</option>
+                    <option value="Blend">Blend</option>
+                </select>
+                <input type="number" name="cantidad" min="0" step="0.1" placeholder="Cantidad (kg)" class="border rounded p-2 flex-1" required>
+                <button type="button" onclick="eliminarGranoRow(this)" class="bg-red-500 text-white px-2 py-1 rounded">X</button>
+            `;
+            document.getElementById('detallesGranos').appendChild(div);
+        }
+
+        function eliminarGranoRow(btn) {
+            btn.parentElement.remove();
+        }
+
+        async function crearPedido(event) {
+            event.preventDefault();
+            const rows = document.querySelectorAll('.grano-row');
+            const detalles = {};
+            rows.forEach(row => {
+                const tipo = row.querySelector('[name="tipoGrano"]').value;
+                const cantidad = parseFloat(row.querySelector('[name="cantidad"]').value);
+                if (tipo && !isNaN(cantidad)) {
+                    detalles[tipo] = (detalles[tipo] || 0) + cantidad;
+                }
+            });
+
+            if (Object.keys(detalles).length === 0) {
+                alert('Añade al menos un grano.');
+                return;
+            }
+
+            try {
+                const respuesta = await fetch('backend/api_inventario.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'crear_pedido', detalles })
+                });
+                const resultado = await respuesta.json();
+                if (respuesta.ok) {
+                    alert('Pedido creado correctamente.');
+                    cerrarFormularioPedido();
+                    cargarPedidos();
+                } else {
+                    alert('Error: ' + resultado.error);
+                }
+            } catch (error) {
+                alert('Error al crear el pedido.');
+                console.error(error);
+            }
+        }
+
+        async function cargarPedidos() {
+            try {
+                const respuesta = await fetch('backend/api_inventario.php?action=pedidos');
+                const pedidos = await respuesta.json();
+
+                let html = `
+                    <table class="table-auto border-collapse border border-gray-400 mt-4">
+                        <thead>
+                            <tr class="bg-gray-100">
+                                <th class="border px-4 py-2">Código</th>
+                                <th class="border px-4 py-2">Fecha</th>
+                                <th class="border px-4 py-2">Detalles</th>
+                                <th class="border px-4 py-2">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                for (const id in pedidos) {
+                    const pedido = pedidos[id];
+                    let detallesHtml = '';
+                    for (const tipo in pedido.detalles) {
+                        detallesHtml += `${tipo}: ${pedido.detalles[tipo]} kg<br>`;
+                    }
+                    html += `
+                        <tr>
+                            <td class="border px-4 py-2 text-center">${pedido.codigo_pedido}</td>
+                            <td class="border px-4 py-2 text-center">${pedido.fecha}</td>
+                            <td class="border px-4 py-2 text-center">${detallesHtml}</td>
+                            <td class="border px-4 py-2 text-center">
+                                <button onclick="marcarEntregado(${id})" class="bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600">Marcar Entregado</button>
+                            </td>
+                        </tr>
+                    `;
+                }
+
+                html += `</tbody></table>`;
+                document.getElementById('tablaPedidos').innerHTML = html;
+
+            } catch (error) {
+                document.getElementById('tablaPedidos').innerHTML = `<p class="text-red-500">Error al cargar los pedidos.</p>`;
+                console.error(error);
+            }
+        }
+
+        async function marcarEntregado(id_pedido) {
+            if (confirm('¿Marcar este pedido como entregado? Esto restará del inventario.')) {
+                try {
+                    const respuesta = await fetch('backend/api_inventario.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'marcar_entregado', id_pedido })
+                    });
+                    const resultado = await respuesta.json();
+                    if (respuesta.ok) {
+                        alert('Pedido entregado correctamente.');
+                        cargarPedidos();
+                        if (document.getElementById('materia').classList.contains('active')) {
+                            cargarInventario();
+                        }
+                    } else {
+                        alert('Error: ' + resultado.error);
+                    }
+                } catch (error) {
+                    alert('Error al marcar el pedido.');
+                    console.error(error);
+                }
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             cargarInventario();
+            cargarPedidos();
             document.getElementById('tablaInventario').addEventListener('submit', (e) => {
                 if (e.target.id === 'formAnadirGrano') anadirCantidadGrano(e);
+            });
+            document.body.addEventListener('submit', (e) => {
+                if (e.target.id === 'formPedido') crearPedido(e);
             });
         });
     </script>
