@@ -35,8 +35,27 @@
         </section>
 
         <section id="produccion" class="section">
-            <h2>Gestión de Producción</h2>
-            <p>Planificar y controlar los procesos de tostado, molienda y envasado del café gourmet.</p>
+            <h2>Gestión de Producción de Empaques</h2>
+            <p>Planificar y controlar procesos de teñido, tejido, corte y confección para costales, bolsas y empaques de café.</p>
+    
+            <div id="tablaMaterialesTextiles" class="mt-4"></div>
+            <button onclick="cargarMaterialesTextiles()" class="bg-green-600 text-white px-4 py-2 rounded mt-3 hover:bg-green-700">
+            Actualizar Materiales Textiles
+            </button>
+
+            <button onclick="mostrarFormularioLote()" class="bg-blue-600 text-white px-4 py-2 rounded mt-3 hover:bg-blue-700">
+            Planificar Nuevo Lote
+            </button>
+
+            <div id="tablaLotes" class="mt-4"></div>
+            <button onclick="cargarLotes()" class="bg-green-600 text-white px-4 py-2 rounded mt-3 hover:bg-green-700">
+            Actualizar Lotes
+            </button>
+
+            <button onclick="generarReporteLotes()" class="bg-purple-600 text-white px-4 py-2 rounded mt-3 hover:bg-purple-700">
+            Generar Reporte de Lotes
+            </button>
+            <div id="reporteLotes" class="mt-4"></div>
         </section>
 
         <section id="productos" class="section">
@@ -373,6 +392,263 @@
                 if (e.target.id === 'formPedido') crearPedido(e);
             });
         });
+
+        async function cargarMaterialesTextiles() {
+    try {
+        const respuesta = await fetch('backend/api_produccion.php?action=materiales_textiles');
+        const materiales = await respuesta.json();
+        let html = `
+            <table class="table-auto border-collapse border border-gray-400 mt-4">
+                <thead>
+                    <tr class="bg-gray-100">
+                        <th class="border px-4 py-2">Tipo de Material</th>
+                        <th class="border px-4 py-2">Cantidad (kg)</th>
+                        <th class="border px-4 py-2">Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        for (const tipo in materiales) {
+            html += `
+                <tr>
+                    <td class="border px-4 py-2 text-center">${tipo}</td>
+                    <td class="border px-4 py-2 text-center">${materiales[tipo]}</td>
+                    <td class="border px-4 py-2 text-center">
+                        <button onclick="mostrarFormularioAnadirTextil('${tipo}')" class="bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700">Añadir</button>
+                    </td>
+                </tr>
+            `;
+        }
+        html += `</tbody></table>`;
+        document.getElementById('tablaMaterialesTextiles').innerHTML = html;
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+function mostrarFormularioAnadirTextil(tipo) {
+    // Similar a mostrarFormularioAnadir, pero para textiles
+    const formulario = `
+        <div class="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center">
+            <div class="bg-white p-6 rounded shadow-lg">
+                <h3 class="text-lg font-semibold mb-4">Añadir Cantidad para ${tipo}</h3>
+                <form id="formAnadirTextil" class="space-y-4">
+                    <input type="hidden" id="tipoTextil" value="${tipo}">
+                    <div>
+                        <label for="cantidadKgTextil" class="block text-sm font-medium">Cantidad (kg)</label>
+                        <input type="number" id="cantidadKgTextil" name="cantidadKgTextil" min="0" step="0.01" class="border rounded p-2 w-full" required>
+                    </div>
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" onclick="cerrarFormularioAnadirTextil()" class="bg-gray-500 text-white px-4 py-2 rounded">Cancelar</button>
+                        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Añadir</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', formulario);
+    document.getElementById('formAnadirTextil').addEventListener('submit', anadirCantidadTextil);
+}
+
+function cerrarFormularioAnadirTextil() {
+    const formulario = document.querySelector('.fixed.inset-0');
+    if (formulario) formulario.remove();
+}
+
+async function anadirCantidadTextil(event) {
+    event.preventDefault();
+    const tipo = document.getElementById('tipoTextil').value;
+    const cantidad = parseFloat(document.getElementById('cantidadKgTextil').value);
+    try {
+        const respuesta = await fetch('backend/api_produccion.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'actualizar_stock_textil', tipo, cantidad })
+        });
+        const resultado = await respuesta.json();
+        if (respuesta.ok) {
+            alert('Cantidad añadida.');
+            cerrarFormularioAnadirTextil();
+            cargarMaterialesTextiles();
+        } else {
+            alert('Error: ' + resultado.error);
+        }
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+function mostrarFormularioLote() {
+    const formulario = `
+        <div class="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center">
+            <div class="bg-white p-6 rounded shadow-lg w-1/2">
+                <h3 class="text-lg font-semibold mb-4">Planificar Nuevo Lote</h3>
+                <form id="formLote" class="space-y-4">
+                    <div>
+                        <label for="tipoEmpaque">Tipo de Empaque</label>
+                        <input type="text" id="tipoEmpaque" placeholder="e.g., Costal de Yute 50kg" class="border rounded p-2 w-full" required>
+                    </div>
+                    <div>
+                        <label for="cantidadPlaneada">Cantidad Planeada (unidades)</label>
+                        <input type="number" id="cantidadPlaneada" min="1" class="border rounded p-2 w-full" required>
+                    </div>
+                    <div>
+                        <label>Procesos a Incluir</label>
+                        <div class="space-y-2">
+                            <label><input type="checkbox" name="procesos" value="tejido"> Tejido</label>
+                            <label><input type="checkbox" name="procesos" value="teñido"> Teñido</label>
+                            <label><input type="checkbox" name="procesos" value="corte"> Corte</label>
+                            <label><input type="checkbox" name="procesos" value="confeccion"> Confección</label>
+                        </div>
+                    </div>
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" onclick="cerrarFormularioLote()" class="bg-gray-500 text-white px-4 py-2 rounded">Cancelar</button>
+                        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Crear Lote</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', formulario);
+    document.getElementById('formLote').addEventListener('submit', crearLote);
+}
+
+function cerrarFormularioLote() {
+    const formulario = document.querySelector('.fixed.inset-0');
+    if (formulario) formulario.remove();
+}
+
+async function crearLote(event) {
+    event.preventDefault();
+    const tipo_empaque = document.getElementById('tipoEmpaque').value;
+    const cantidad_planeada = parseInt(document.getElementById('cantidadPlaneada').value);
+    const procesos = Array.from(document.querySelectorAll('[name="procesos"]:checked')).map(cb => cb.value);
+    try {
+        const respuesta = await fetch('backend/api_produccion.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'crear_lote', tipo_empaque, cantidad_planeada, procesos })
+        });
+        const resultado = await respuesta.json();
+        if (respuesta.ok) {
+            alert('Lote planeado correctamente.');
+            cerrarFormularioLote();
+            cargarLotes();
+        } else {
+            alert('Error: ' + resultado.error);
+        }
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+async function cargarLotes() {
+    try {
+        const respuesta = await fetch('backend/api_produccion.php?action=lotes');
+        const lotes = await respuesta.json();
+        let html = `
+            <table class="table-auto border-collapse border border-gray-400 mt-4">
+                <thead>
+                    <tr class="bg-gray-100">
+                        <th class="border px-4 py-2">Código</th>
+                        <th class="border px-4 py-2">Tipo Empaque</th>
+                        <th class="border px-4 py-2">Cantidad Planeada</th>
+                        <th class="border px-4 py-2">Estado</th>
+                        <th class="border px-4 py-2">Procesos</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        for (const id in lotes) {
+            const lote = lotes[id];
+            let procesosHtml = '';
+            lote.procesos.forEach(p => {
+                procesosHtml += `${p.proceso}: ${p.cantidad_procesada || 0} procesado ${p.fecha_completado ? '(Completado)' : '<button onclick="completarProceso(' + id + ', \'' + p.proceso + '\')">Completar</button>'}<br>`;
+            });
+            html += `
+                <tr>
+                    <td class="border px-4 py-2 text-center">${lote.codigo_lote}</td>
+                    <td class="border px-4 py-2 text-center">${lote.tipo_empaque}</td>
+                    <td class="border px-4 py-2 text-center">${lote.cantidad_planeada}</td>
+                    <td class="border px-4 py-2 text-center">${lote.estado}</td>
+                    <td class="border px-4 py-2 text-center">${procesosHtml}</td>
+                </tr>
+            `;
+        }
+        html += `</tbody></table>`;
+        document.getElementById('tablaLotes').innerHTML = html;
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+async function completarProceso(id_lote, proceso) {
+    const cantidad_procesada = prompt('Ingrese cantidad procesada:');
+    if (cantidad_procesada) {
+        try {
+            const respuesta = await fetch('backend/api_produccion.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'completar_proceso', id_lote, proceso, cantidad_procesada: parseFloat(cantidad_procesada) })
+            });
+            const resultado = await respuesta.json();
+            if (respuesta.ok) {
+                alert('Proceso completado.');
+                cargarLotes();
+            } else {
+                alert('Error: ' + resultado.error);
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    }
+}
+
+async function generarReporteLotes() {
+    try {
+        const respuesta = await fetch('backend/api_produccion.php?action=reporte_lotes');
+        const reporte = await respuesta.json();
+        let html = `
+            <table class="table-auto border-collapse border border-purple-400 mt-4">
+                <thead>
+                    <tr class="bg-purple-100">
+                        <th class="border px-4 py-2">Código</th>
+                        <th class="border px-4 py-2">Tipo</th>
+                        <th class="border px-4 py-2">Cantidad</th>
+                        <th class="border px-4 py-2">Estado</th>
+                        <th class="border px-4 py-2">Fecha Inicio</th>
+                        <th class="border px-4 py-2">Fecha Fin</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        reporte.forEach(r => {
+            html += `
+                <tr>
+                    <td class="border px-4 py-2 text-center">${r.codigo_lote}</td>
+                    <td class="border px-4 py-2 text-center">${r.tipo_empaque}</td>
+                    <td class="border px-4 py-2 text-center">${r.cantidad_planeada}</td>
+                    <td class="border px-4 py-2 text-center">${r.estado}</td>
+                    <td class="border px-4 py-2 text-center">${r.fecha_inicio || 'N/A'}</td>
+                    <td class="border px-4 py-2 text-center">${r.fecha_fin || 'N/A'}</td>
+                </tr>
+            `;
+        });
+        html += `</tbody></table>`;
+        document.getElementById('reporteLotes').innerHTML = html;
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+// Cargar inicial
+document.addEventListener('DOMContentLoaded', () => {
+    // ... código existente ...
+    if (document.getElementById('produccion').classList.contains('active')) {
+        cargarMaterialesTextiles();
+        cargarLotes();
+    }
+});
     </script>
 </body>
 </html>
