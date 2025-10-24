@@ -61,6 +61,25 @@
         <section id="productos" class="section">
             <h2>Gestión de Productos Terminados</h2>
             <p>Registrar lotes terminados, controlar calidad mediante análisis de catación y preparar lotes para distribución.</p>
+        
+            <div id="tablaProductosTerminados" class="mt-4"></div>
+            <button onclick="cargarProductosTerminados()" class="bg-green-600 text-white px-4 py-2 rounded mt-3 hover:bg-green-700">
+            Actualizar Productos Terminados
+            </button>
+
+            <button onclick="mostrarFormularioLoteProducto()" class="bg-blue-600 text-white px-4 py-2 rounded mt-3 hover:bg-blue-700">
+            Planificar Nuevo Lote
+            </button>
+
+            <div id="tablaLotesProductos" class="mt-4"></div>
+            <button onclick="cargarLotesProductos()" class="bg-green-600 text-white px-4 py-2 rounded mt-3 hover:bg-green-700">
+            Monitorear Lotes
+            </button>
+
+            <button onclick="generarReporteLotesProductos()" class="bg-purple-600 text-white px-4 py-2 rounded mt-3 hover:bg-purple-700">
+            Generar Reporte de Lotes
+            </button>
+            <div id="reporteLotesProductos" class="mt-4"></div>
         </section>
 
         <section id="pedidos" class="section">
@@ -649,6 +668,265 @@ document.addEventListener('DOMContentLoaded', () => {
         cargarLotes();
     }
 });
+
+async function cargarProductosTerminados() {
+    try {
+        const respuesta = await fetch('backend/api_productos.php?action=productos_terminados');
+        const productos = await respuesta.json();
+        let html = `
+            <table class="table-auto border-collapse border border-gray-400 mt-4">
+                <thead>
+                    <tr class="bg-gray-100">
+                        <th class="border px-4 py-2">Tipo de Café</th>
+                        <th class="border px-4 py-2">Cantidad (kg)</th>
+                        <th class="border px-4 py-2">Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        for (const tipo in productos) {
+            html += `
+                <tr>
+                    <td class="border px-4 py-2 text-center">${tipo}</td>
+                    <td class="border px-4 py-2 text-center">${productos[tipo]}</td>
+                    <td class="border px-4 py-2 text-center">
+                        <button onclick="mostrarFormularioAnadirProducto('${tipo}')" class="bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700">Añadir</button>
+                    </td>
+                </tr>
+            `;
+        }
+        html += `</tbody></table>`;
+        document.getElementById('tablaProductosTerminados').innerHTML = html;
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+function mostrarFormularioAnadirProducto(tipo) {
+    const formulario = `
+        <div class="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center">
+            <div class="bg-white p-6 rounded shadow-lg">
+                <h3 class="text-lg font-semibold mb-4">Añadir Cantidad para ${tipo}</h3>
+                <form id="formAnadirProducto" class="space-y-4">
+                    <input type="hidden" id="tipoProducto" value="${tipo}">
+                    <div>
+                        <label for="cantidadKgProducto" class="block text-sm font-medium">Cantidad (kg)</label>
+                        <input type="number" id="cantidadKgProducto" name="cantidadKgProducto" min="0" step="0.01" class="border rounded p-2 w-full" required>
+                    </div>
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" onclick="cerrarFormularioAnadirProducto()" class="bg-gray-500 text-white px-4 py-2 rounded">Cancelar</button>
+                        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Añadir</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', formulario);
+    document.getElementById('formAnadirProducto').addEventListener('submit', anadirCantidadProducto);
+}
+
+function cerrarFormularioAnadirProducto() {
+    const formulario = document.querySelector('.fixed.inset-0');
+    if (formulario) formulario.remove();
+}
+
+async function anadirCantidadProducto(event) {
+    event.preventDefault();
+    const tipo = document.getElementById('tipoProducto').value;
+    const cantidad = parseFloat(document.getElementById('cantidadKgProducto').value);
+    try {
+        const respuesta = await fetch('backend/api_productos.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'actualizar_stock_producto', tipo, cantidad })
+        });
+        const resultado = await respuesta.json();
+        if (respuesta.ok) {
+            alert('Cantidad añadida.');
+            cerrarFormularioAnadirProducto();
+            cargarProductosTerminados();
+        } else {
+            alert('Error: ' + resultado.error);
+        }
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+function mostrarFormularioLoteProducto() {
+    const formulario = `
+        <div class="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center">
+            <div class="bg-white p-6 rounded shadow-lg w-1/2">
+                <h3 class="text-lg font-semibold mb-4">Planificar Nuevo Lote de Producto</h3>
+                <form id="formLoteProducto" class="space-y-4">
+                    <div>
+                        <label for="tipoCafe">Tipo de Café</label>
+                        <input type="text" id="tipoCafe" placeholder="e.g., Arábica Tostado Molido Fino" class="border rounded p-2 w-full" required>
+                    </div>
+                    <div>
+                        <label for="cantidadPlaneadaProducto">Cantidad Planeada (kg)</label>
+                        <input type="number" id="cantidadPlaneadaProducto" min="1" step="0.1" class="border rounded p-2 w-full" required>
+                    </div>
+                    <div>
+                        <label>Procesos a Incluir</label>
+                        <div class="space-y-2">
+                            <label><input type="checkbox" name="procesosProducto" value="tostado"> Tostado</label>
+                            <label><input type="checkbox" name="procesosProducto" value="molido"> Molido</label>
+                            <label><input type="checkbox" name="procesosProducto" value="envasado"> Envasado</label>
+                        </div>
+                    </div>
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" onclick="cerrarFormularioLoteProducto()" class="bg-gray-500 text-white px-4 py-2 rounded">Cancelar</button>
+                        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Crear Lote</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', formulario);
+    document.getElementById('formLoteProducto').addEventListener('submit', crearLoteProducto);
+}
+
+function cerrarFormularioLoteProducto() {
+    const formulario = document.querySelector('.fixed.inset-0');
+    if (formulario) formulario.remove();
+}
+
+async function crearLoteProducto(event) {
+    event.preventDefault();
+    const tipo_cafe = document.getElementById('tipoCafe').value;
+    const cantidad_planeada = parseFloat(document.getElementById('cantidadPlaneadaProducto').value);
+    const procesos = Array.from(document.querySelectorAll('[name="procesosProducto"]:checked')).map(cb => cb.value);
+    try {
+        const respuesta = await fetch('backend/api_productos.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'crear_lote', tipo_cafe, cantidad_planeada, procesos })
+        });
+        const resultado = await respuesta.json();
+        if (respuesta.ok) {
+            alert('Lote planeado correctamente.');
+            cerrarFormularioLoteProducto();
+            cargarLotesProductos();
+        } else {
+            alert('Error: ' + resultado.error);
+        }
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+async function cargarLotesProductos() {
+    try {
+        const respuesta = await fetch('backend/api_productos.php?action=lotes');
+        const lotes = await respuesta.json();
+        let html = `
+            <table class="table-auto border-collapse border border-gray-400 mt-4">
+                <thead>
+                    <tr class="bg-gray-100">
+                        <th class="border px-4 py-2">Código</th>
+                        <th class="border px-4 py-2">Tipo Café</th>
+                        <th class="border px-4 py-2">Cantidad (kg)</th>
+                        <th class="border px-4 py-2">Estado</th>
+                        <th class="border px-4 py-2">Vencimiento</th>
+                        <th class="border px-4 py-2">Procesos</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        for (const id in lotes) {
+            const lote = lotes[id];
+            let procesosHtml = '';
+            lote.procesos.forEach(p => {
+                procesosHtml += `${p.proceso}: ${p.cantidad_procesada || 0} procesado ${p.fecha_completado ? '(Completado)' : '<button onclick="completarProcesoProducto(' + id + ', \'' + p.proceso + '\')">Completar</button>'}<br>`;
+            });
+            html += `
+                <tr>
+                    <td class="border px-4 py-2 text-center">${lote.codigo_lote}</td>
+                    <td class="border px-4 py-2 text-center">${lote.tipo_cafe}</td>
+                    <td class="border px-4 py-2 text-center">${lote.cantidad_kg}</td>
+                    <td class="border px-4 py-2 text-center">${lote.estado}</td>
+                    <td class="border px-4 py-2 text-center">${lote.fecha_vencimiento}</td>
+                    <td class="border px-4 py-2 text-center">${procesosHtml}</td>
+                </tr>
+            `;
+        }
+        html += `</tbody></table>`;
+        document.getElementById('tablaLotesProductos').innerHTML = html;
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+async function completarProcesoProducto(id_lote, proceso) {
+    const cantidad_procesada = prompt('Ingrese cantidad procesada (kg):');
+    if (cantidad_procesada) {
+        try {
+            const respuesta = await fetch('backend/api_productos.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'completar_proceso', id_lote, proceso, cantidad_procesada: parseFloat(cantidad_procesada) })
+            });
+            const resultado = await respuesta.json();
+            if (respuesta.ok) {
+                alert('Proceso completado.');
+                cargarLotesProductos();
+                cargarProductosTerminados();  // Actualizar inventario si se completa el lote
+            } else {
+                alert('Error: ' + resultado.error);
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    }
+}
+
+async function generarReporteLotesProductos() {
+    try {
+        const respuesta = await fetch('backend/api_productos.php?action=reporte_lotes');
+        const reporte = await respuesta.json();
+        let html = `
+            <table class="table-auto border-collapse border border-purple-400 mt-4">
+                <thead>
+                    <tr class="bg-purple-100">
+                        <th class="border px-4 py-2">Código</th>
+                        <th class="border px-4 py-2">Tipo</th>
+                        <th class="border px-4 py-2">Cantidad (kg)</th>
+                        <th class="border px-4 py-2">Estado</th>
+                        <th class="border px-4 py-2">Producción</th>
+                        <th class="border px-4 py-2">Vencimiento</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        reporte.forEach(r => {
+            html += `
+                <tr>
+                    <td class="border px-4 py-2 text-center">${r.codigo_lote}</td>
+                    <td class="border px-4 py-2 text-center">${r.tipo_cafe}</td>
+                    <td class="border px-4 py-2 text-center">${r.cantidad_kg}</td>
+                    <td class="border px-4 py-2 text-center">${r.estado}</td>
+                    <td class="border px-4 py-2 text-center">${r.fecha_produccion || 'N/A'}</td>
+                    <td class="border px-4 py-2 text-center">${r.fecha_vencimiento || 'N/A'}</td>
+                </tr>
+            `;
+        });
+        html += `</tbody></table>`;
+        document.getElementById('reporteLotesProductos').innerHTML = html;
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+// Cargar inicial al entrar en la sección
+document.addEventListener('DOMContentLoaded', () => {
+    // ... código existente ...
+    if (document.getElementById('productos').classList.contains('active')) {
+        cargarProductosTerminados();
+        cargarLotesProductos();
+    }
+});
+
     </script>
 </body>
 </html>

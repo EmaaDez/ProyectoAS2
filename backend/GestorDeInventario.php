@@ -29,8 +29,13 @@ class GestorDeInventario {
     }
 
     public function actualizarStock($tipo, $cantidad) {
-        $tipo = $this->conexion->real_escape_string($tipo);
+        $tipo = $this->conexion->real_escape_string(trim($tipo)); // Elimina espacios y escapa
         $cantidad = floatval($cantidad);
+
+        // Validación estricta: no permitir tipo vacío o nulo
+        if (empty($tipo)) {
+            throw new Exception("El tipo de grano no puede estar vacío.");
+        }
 
         $sql = "SELECT cantidad_kg FROM materia_prima WHERE tipo_grano = '$tipo'";
         $resultado = $this->conexion->query($sql);
@@ -44,7 +49,7 @@ class GestorDeInventario {
             $sql = "UPDATE materia_prima SET cantidad_kg = cantidad_kg + $cantidad WHERE tipo_grano = '$tipo'";
         } else {
             if ($cantidad < 0) {
-                throw new Exception("No se puede insertar una cantidad negativa.");
+                throw new Exception("No se puede insertar una cantidad negativa sin registro previo.");
             }
             $sql = "INSERT INTO materia_prima (tipo_grano, cantidad_kg) VALUES ('$tipo', $cantidad)";
         }

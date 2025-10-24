@@ -30,9 +30,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $tipo = $data['tipo'] ?? null;
                 $cantidad = $data['cantidad'] ?? null;
                 if ($tipo && $cantidad !== null) {
-                    $inventario->actualizarStock($tipo, $cantidad);
-                    echo json_encode(["mensaje" => "Stock actualizado", "inventario" => $inventario->mostrarInventario()]);
-                } else {
+                $inventario->actualizarStock($tipo, $cantidad);
+                echo json_encode(["mensaje" => "Stock actualizado", "inventario" => $inventario->mostrarInventario()]);
+                }else {
                     throw new Exception("Datos inválidos para actualizar stock");
                 }
                 break;
