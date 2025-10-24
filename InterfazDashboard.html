@@ -110,78 +110,105 @@
             window.location.href = "InterfazInicioRegistro.html";
         }
 
-        async function cargarInventario() {
-            try {
-                const respuesta = await fetch('backend/api_inventario.php?action=inventario');
-                const inventario = await respuesta.json();
+       async function cargarInventario() {
+    try {
+        const respuesta = await fetch('backend/api_inventario.php?action=inventario');
+        const inventario = await respuesta.json();
 
-                // Tabla de inventario completo
-                let htmlInventario = `
-                    <table class="table-auto border-collapse border border-gray-400 mt-4">
-                        <thead>
-                            <tr class="bg-gray-100">
-                                <th class="border px-4 py-2">Tipo de Grano</th>
-                                <th class="border px-4 py-2">Cantidad (kg)</th>
-                                <th class="border px-4 py-2">Acción</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+        // Tabla de inventario completo
+        let htmlInventario = `
+            <table class="table-auto border-collapse border border-gray-400 mt-4">
+                <thead>
+                    <tr class="bg-gray-100">
+                        <th class="border px-4 py-2">Tipo de Grano</th>
+                        <th class="border px-4 py-2">Cantidad (kg)</th>
+                        <th class="border px-4 py-2">Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        // Tabla de stock bajo
+        let htmlStockBajo = `
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                <strong>Alerta:</strong> Los siguientes granos tienen stock bajo (< 20 kg). Se recomienda realizar un pedido.
+                <label class="ml-2"><input type="checkbox" id="autoPedido" ${localStorage.getItem('autoPedido') === 'true' ? 'checked' : ''}> Activar pedidos automáticos</label>
+            </div>
+            <table class="table-auto border-collapse border border-red-400 mt-4">
+                <thead>
+                    <tr class="bg-red-200">
+                        <th class="border px-4 py-2">Tipo de Grano</th>
+                        <th class="border px-4 py-2">Cantidad (kg)</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        let hayStockBajo = false;
+        const granosBajoStock = []; // Array para almacenar granos con stock bajo
+        for (const tipo in inventario) {
+            const cantidad = inventario[tipo];
+            htmlInventario += `
+                <tr>
+                    <td class="border px-4 py-2 text-center">${tipo}</td>
+                    <td class="border px-4 py-2 text-center">${cantidad}</td>
+                    <td class="border px-4 py-2 text-center">
+                        <button onclick="mostrarFormularioAnadir('${tipo}')" class="bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700">Añadir Cantidad</button>
+                    </td>
+                </tr>
+            `;
+            if (cantidad < 20) {
+                hayStockBajo = true;
+                granosBajoStock.push({ tipo, cantidad });
+                htmlStockBajo += `
+                    <tr>
+                        <td class="border px-4 py-2 text-center">${tipo}</td>
+                        <td class="border px-4 py-2 text-center">${cantidad}</td>
+                    </tr>
                 `;
-
-                // Tabla de stock bajo
-                let htmlStockBajo = `
-                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-                        <strong>Alerta:</strong> Los siguientes granos tienen stock bajo (< 20 kg). Se recomienda realizar un pedido.
-                    </div>
-                    <table class="table-auto border-collapse border border-red-400 mt-4">
-                        <thead>
-                            <tr class="bg-red-200">
-                                <th class="border px-4 py-2">Tipo de Grano</th>
-                                <th class="border px-4 py-2">Cantidad (kg)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                `;
-
-                let hayStockBajo = false;
-                for (const tipo in inventario) {
-                    const cantidad = inventario[tipo];
-                    // Tabla de inventario completo
-                    htmlInventario += `
-                        <tr>
-                            <td class="border px-4 py-2 text-center">${tipo}</td>
-                            <td class="border px-4 py-2 text-center">${cantidad}</td>
-                            <td class="border px-4 py-2 text-center">
-                                <button onclick="mostrarFormularioAnadir('${tipo}')" class="bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700">Añadir Cantidad</button>
-                            </td>
-                        </tr>
-                    `;
-                    // Tabla de stock bajo
-                    if (cantidad < 20) {
-                        hayStockBajo = true;
-                        htmlStockBajo += `
-                            <tr>
-                                <td class="border px-4 py-2 text-center">${tipo}</td>
-                                <td class="border px-4 py-2 text-center">${cantidad}</td>
-                            </tr>
-                        `;
-                    }
-                }
-
-                htmlInventario += `</tbody></table>`;
-                htmlStockBajo += `</tbody></table>`;
-
-                // Mostrar tabla de stock bajo solo si hay granos con < 20 kg
-                document.getElementById('tablaStockBajo').innerHTML = hayStockBajo ? htmlStockBajo : '';
-                document.getElementById('tablaInventario').innerHTML = htmlInventario;
-
-            } catch (error) {
-                document.getElementById('tablaInventario').innerHTML =
-                    `<p class="text-red-500">Error al cargar el inventario.</p>`;
-                document.getElementById('tablaStockBajo').innerHTML = '';
-                console.error(error);
             }
         }
+
+        htmlInventario += `</tbody></table>`;
+        htmlStockBajo += `</tbody></table>`;
+
+        document.getElementById('tablaStockBajo').innerHTML = hayStockBajo ? htmlStockBajo : '';
+        document.getElementById('tablaInventario').innerHTML = htmlInventario;
+
+        // Nueva lógica: Si hay stock bajo y el usuario ha activado pedidos automáticos
+        if (hayStockBajo && document.getElementById('autoPedido')?.checked) {
+            const detalles = {};
+            granosBajoStock.forEach(grano => {
+                detalles[grano.tipo] = 50; // Cantidad predeterminada de 50 kg para reponer
+            });
+
+            // Mostrar el formulario prellenado y enviarlo automáticamente
+            mostrarFormularioPedido();
+            setTimeout(() => {
+                const rows = document.querySelectorAll('.grano-row');
+                rows.forEach((row, index) => {
+                    if (index < granosBajoStock.length) {
+                        row.querySelector('[name="tipoGrano"]').value = granosBajoStock[index].tipo;
+                        row.querySelector('[name="cantidad"]').value = 50;
+                    }
+                });
+
+                // Simular el envío del formulario
+                const event = new Event('submit');
+                document.getElementById('formPedido').dispatchEvent(event);
+            }, 100); // Retraso de 100ms para asegurar que el DOM se renderice
+
+            // Guardar preferencia en localStorage
+            localStorage.setItem('autoPedido', document.getElementById('autoPedido').checked);
+        }
+
+    } catch (error) {
+        document.getElementById('tablaInventario').innerHTML =
+            `<p class="text-red-500">Error al cargar el inventario.</p>`;
+        document.getElementById('tablaStockBajo').innerHTML = '';
+        console.error(error);
+    }
+}
 
         function mostrarFormularioAnadir(tipo) {
             const formulario = `
