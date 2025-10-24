@@ -6,7 +6,7 @@ class Conexion {
         if (self::$instancia === null) {
             $host = "localhost:3306";
             $usuario = "root";
-            $password = ""; // cambia si tu usuario tiene clave
+            $password = ""; 
             $baseDeDatos = "cafegourmet_db";
 
             self::$instancia = new mysqli($host, $usuario, $password, $baseDeDatos);

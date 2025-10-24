@@ -31,8 +31,8 @@ try {
         } else {
             $mensaje = '<div class="mensaje-registro error">Correo o contraseña incorrectos.</div>';
         }
-    } // Cierre del bloque else
-} // Cierre del bloque try
+    } 
+} 
 
 catch (PDOException $e) {
     header('Content-Type: text/html');
